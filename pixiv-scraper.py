@@ -26,7 +26,7 @@ def get_author_name(api, author_id):
     return json.response[0].name
 
 
-def create_directory(api, author_name, download_location):
+def create_directory(author_name, download_location):
     directory_path = download_location + "\\" + author_name
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
@@ -45,7 +45,7 @@ def download_images(api, author_id, download_location):
     if author_name is None:
         print("\nERROR: author id %d does not exist\n" % author_id)
         return
-    directory_path = create_directory(api, author_name, download_location)
+    directory_path = create_directory(author_name, download_location)
     print("\ndownload for author %s begins\n" %  author_name)
     for json in illust_pages(api, author_id):
         for image in json.response:

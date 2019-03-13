@@ -1,9 +1,10 @@
 {
     "username": "your-username",
     "password": "your-password",
-    "download_location": "C:\\Pictures",
+    "download_location": "D:\\Pictures\\Pixiv",
     "author_ids": [
             "789222",
-            "12572640"
+            "12572640",
+            "3869665"
     ]
 }
