@@ -13,9 +13,9 @@ def illust_pages(api, author_id):
     page = 1
     while True:
         json = api.users_works(author_id, page=page)
-        page += 1
         if json.status == "failure":
             break
+        page += 1
         yield json
 
 
