@@ -22,6 +22,8 @@ This is my personal project created to download images from [Pixiv](https://www.
 
 ## Notes
 
+- the program uses threads to download images from multiple authors simultaneously, that is, each thread is responsible for a single author. So, the more authors you have, the more threads the program uses, and ultimately the faster the overall process. Likewise, if you only have one author, the program will run noticeably slower because there is only one thread running
+
 - Pixiv requires users to login in order to see any content, so you need to register an account for this program to work
 
 - if you want to download R-18 images, you need to change `Viewing restriction` in your Pixiv `User settings`
@@ -31,5 +33,3 @@ This is my personal project created to download images from [Pixiv](https://www.
 - refactor code
 
 - add more functionality (e.g. ranking)
-
-- use threads to make the download process faster
