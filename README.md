@@ -36,9 +36,7 @@ The program uses threads to download images. The number of threads is declared a
 
 ## Challenges
 
-- unstable connection
-
-  - sometimes the `requests` module will close the program with error `Remote end closed connection without response`. The issue occurs when downloading too many images (~ 8GB) at once using `api.download` function. I am not sure the exact cause, but it is most likely due to the high amount of requests sent from the same IP address in a short period of time; hence the server closes the connection
+- sometimes the `requests` module will close the program with error `Remote end closed connection without response`. The issue occurs when downloading too many images (~8GB) at once using `api.download` function. I am not sure the exact cause, but it is most likely due to the high amount of requests sent from the same IP address in a short period of time; hence the server closes the connection
 
   - Solution: use `session` instead of `api.download` to download images. Allow `session.get` to retry in case of `ConnectionError` exception using `HTTPAdapter` and `Retry` packages
 
