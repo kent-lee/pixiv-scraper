@@ -1,11 +1,11 @@
 {
     "username": "your-username",
     "password": "your-password",
-    "download_location": "D:\\Pictures\\Pixiv",
-    "author_ids": [
-            "789222",
-            "8841683",
-            "12572640"
+    "download_location": "D:/Pictures/Pixiv",
+    "artist_ids": [
+        "2188232",
+        "63924",
+        "408459"
     ],
     "update_info": {}
 }
