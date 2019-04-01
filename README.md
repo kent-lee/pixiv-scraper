@@ -1,6 +1,6 @@
 # Pixiv Scraper
 
-This is my personal project created to download images from [Pixiv](https://www.pixiv.net/) website. The program will grab the highest resolution images, including images in manga, from specified artists to specified download location, both of which can be edited in `info.json` file. In the download location, the program will create and name directories using the artist names, then download images to the corresponding directories. It stores update information for each artist, so it will only download new uploads.
+This is my personal project created to download images from [Pixiv](https://www.pixiv.net/) website. The program will grab the highest resolution images, including images in manga and ugoira, from specified artists to specified download location, both of which can be edited in `info.json` file. In the download location, the program will create and name directories using the artist names, then download images to the corresponding directories. It stores update information for each artist, so it will only download new uploads.
 
 The program uses threads to download images. The number of threads is declared at the beginning of the program; it can be edited based on your preference. With the default value of `24` threads, I am getting around `7 MB/s` download speed.
 
@@ -12,13 +12,13 @@ The program uses threads to download images. The number of threads is declared a
 
 1. install [Python 3.6+](https://www.python.org/)
 
-2. install library `requests` and [PixivPy](https://github.com/upbit/pixivpy)
+2. install `requests` library
 
-        pip install --user requests pixivpy
+        pip install --user requests
 
 3. edit `info.json` file
 
-    - `author_ids`: the artist id shown in URL
+    - `artist_ids`: the artist id shown in URL
 
     - `download_location`: the download directory path
 
@@ -36,12 +36,18 @@ The program uses threads to download images. The number of threads is declared a
 
 ## Challenges
 
-- sometimes the `requests` module will close the program with error `Remote end closed connection without response`. The issue occurs when downloading too many images (~8GB) at once using `api.download` function. I am not sure the exact cause, but it is most likely due to the high amount of requests sent from the same IP address in a short period of time; hence the server closes the connection
+1. Pixiv uses `AJAX` script to generate content dynamically, so parsing plain `HTML` will not work
 
-  - Solution: use `session` instead of `api.download` to download images. Allow `session.get` to retry in case of `ConnectionError` exception using `HTTPAdapter` and `Retry` packages
+    - Solution: simulate `XHR` requests made by `JavaScript` code to extract data from the server. The `XHR` requests and responses can be found in browsers' developer tools under `Network` tab. In `Chrome`, you can filter `XHR` and set the tool to `Preserve log` to have better observation
+
+2. sometimes the `requests` module will close the program with error `Remote end closed connection without response`. I am not sure the exact cause, but it is most likely due to the high amount of requests sent from the same IP address in a short period of time; hence the server closes the connection
+
+    - Solution: use `session` to download images and allow `session.get` to retry in case of `ConnectionError` exception using `HTTPAdapter` and `Retry` packages
 
 ## Todo
 
 - refactor code
 
 - add more functionality (e.g. ranking)
+
+- CLI for add/delete artists
