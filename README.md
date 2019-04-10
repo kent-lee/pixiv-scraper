@@ -2,7 +2,7 @@
 
 This is my personal project created to download images from [Pixiv](https://www.pixiv.net/) website. The program will grab the highest resolution images, including images in manga and ugoira, from specified artists to specified download location, both of which can be edited in `info.json` file. In the download location, the program will create and name directories using the artist names, then download images to the corresponding directories. It stores update information for each artist, so it will only download new uploads.
 
-The program uses threads to download images. The number of threads is declared at the beginning of the program; it can be edited based on your preference. With the default value of `24` threads, I am getting around `7 MB/s` download speed.
+The program uses threads to download images. The number of threads is declared at the beginning of the program; it can be edited based on your preference. With the default value of `24` threads, I am getting around `7.5 MB/s` download speed.
 
 ![alt text](doc/download.gif?raw=true "download")
 
