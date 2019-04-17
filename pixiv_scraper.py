@@ -3,6 +3,7 @@ from functools import partial
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from argparse import ArgumentParser
 import time
 import re
 import json
@@ -34,19 +35,15 @@ def request(session, method, url, response="", headers={}, data={}, stream=False
     # check if request is successful
     res.raise_for_status()
     
-    if response == "HTML":
-        return res.text
-    elif response == "BINARY":
-        return res.content
-    elif response == "JSON":
-        return res.json()
-    else:
-        return res
+    if response == "HTML": return res.text
+    elif response == "BINARY": return res.content
+    elif response == "JSON": return res.json()
+    else: return res
 
 
 
-def create_directory(download_location, artist_name=""):
-    dir_path = os.path.join(download_location, artist_name)
+def create_directory(save_directory, artist_name=""):
+    dir_path = os.path.join(save_directory, artist_name)
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     return dir_path
@@ -140,7 +137,7 @@ def download_artist(session, user_info, artist_id):
     if not artworks:
         print(f"author {artist_name} is up-to-date\n")
         return
-    dir_path = create_directory(user_info["download_location"], artist_name)
+    dir_path = create_directory(user_info["save_directory"], artist_name)
     with ThreadPool(THREADS) as pool:
         file_names = pool.map(partial(save_artwork, session, dir_path), artworks)
     print(f"\ndownload for artist {artist_name} completed\n")
@@ -150,19 +147,14 @@ def download_artist(session, user_info, artist_id):
     modify_files_dates(file_names, dir_path)
 
 
-def main():
-    start_time = time.time()
-
+def download_artists(session):
     user_info = read_json(USER_FILE)
-    session = requests.Session()
-    # retry when exceed the max request number
-    retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
-    session.mount("http://", HTTPAdapter(max_retries=retries))
-    session.mount("https://", HTTPAdapter(max_retries=retries))
+    print("\nLogging in to Pixiv")
     login(session, user_info["username"], user_info["password"])
-    
+
+    start_time = time.time()
     print(f"\nthere are {len(user_info['artist_ids'])} artists...\n")
-    create_directory(user_info["download_location"])
+    create_directory(user_info["save_directory"])
     for id in user_info["artist_ids"]:
         download_artist(session, user_info, id)
     write_json(user_info, USER_FILE)
@@ -175,6 +167,62 @@ def main():
     print(f"total size:\t{size_mb:.4f} MB")
     print(f"total artworks:\t{image_num} artworks")
     print(f"download speed:\t{(size_mb / duration):.4f} MB/s")
+
+
+def set_key_value(key, value):
+    user_info = read_json(USER_FILE)
+    user_info[key] = value
+    write_json(user_info, USER_FILE)
+
+
+def add_artists(session, artist_ids):
+    user_info = read_json(USER_FILE)
+    for artist_id in artist_ids:
+        try:
+            get_artist_name(session, artist_id)
+            if artist_id not in user_info["artist_ids"]:
+                user_info["artist_ids"].append(artist_id)
+                write_json(user_info, USER_FILE)
+            else: print(f"artist ID {artist_id} already exists")
+        except requests.exceptions.HTTPError:
+            print(f"artist has left pixiv or the artist ID {artist_id} does not exist")
+            pass
+
+
+def delete_artists(artist_ids):
+    user_info = read_json(USER_FILE)
+    for artist_id in artist_ids:
+        try:
+            user_info["artist_ids"].remove(artist_id)
+        except ValueError:
+            pass
+        user_info["update_info"].pop(artist_id, None)
+    write_json(user_info, USER_FILE)
+
+
+def main():
+    session = requests.Session()
+    # retry when exceed the max request number
+    retries = Retry(total=5, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
+    session.mount("http://", HTTPAdapter(max_retries=retries))
+    session.mount("https://", HTTPAdapter(max_retries=retries))
+
+    # CLI
+    parser = ArgumentParser()
+    parser.add_argument("-u", dest="username", help="set pixiv username")
+    parser.add_argument("-p", dest="password", help="set pixiv password")
+    parser.add_argument("-s", dest="save_dir", help="set save directory")
+    parser.add_argument("-a", nargs="+", dest="add", help="add artist ids", metavar="")
+    parser.add_argument("-d", nargs="+", dest="delete", help="delete artist ids", metavar="")
+    parser.add_argument("-r", action="store_true", dest="run", help="run program")
+    args = parser.parse_args()
+
+    if args.username: set_key_value("username", args.username)
+    if args.password: set_key_value("password", args.password)
+    if args.save_dir: set_key_value("save_directory", args.save_dir)
+    if args.add: add_artists(session, args.add)
+    if args.delete: delete_artists(args.delete)
+    if args.run: download_artists(session)
 
 
 if __name__ == "__main__":
