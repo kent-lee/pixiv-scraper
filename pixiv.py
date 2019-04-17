@@ -84,7 +84,7 @@ def download_artwork(session, dir_path, artwork):
         file_name = re.search(r"\d+_(p|ugoira).*?\..*", url)[0]
         files.append(file_name)
         with open(os.path.join(dir_path, file_name), "wb") as f:
-            for chunk in res.iter_content(chunk_size=1048576):
+            for chunk in res.iter_content(chunk_size=stats.MB):
                 f.write(chunk)
                 stats.update_size(len(chunk))
         stats.update_files()

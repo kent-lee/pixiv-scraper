@@ -4,7 +4,6 @@ import utils, pixiv
 
 def init_args():
     parser = ArgumentParser()
-    parser.add_argument("-f", dest="user_file", default="data/info.json", help="change user file path")
     parser.add_argument("-t", dest="threads", type=int, help="change number of threads")
     parser.add_argument("-u", dest="username", help="set pixiv username")
     parser.add_argument("-p", dest="password", help="set pixiv password")
@@ -18,7 +17,7 @@ def init_args():
 def main():
     session = pixiv.init_session()
     args = init_args()
-    user_file = args.user_file
+    user_file = "data/info.json"
     user = utils.read_json(user_file)
     if args.username: user["username"] = args.username
     if args.password: user["password"] = args.password
