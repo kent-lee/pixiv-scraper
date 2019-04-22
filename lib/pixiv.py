@@ -8,7 +8,7 @@ import os, re
 
 class PixivAPI:
 
-    threads = multiprocessing.cpu_count() * 4
+    threads = multiprocessing.cpu_count() * 3
     download_chunk_size = 1048576
 
     def __init__(self):
