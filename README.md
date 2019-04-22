@@ -2,7 +2,7 @@
 
 This is my personal project created to download images from [Pixiv](https://www.pixiv.net/) website. The program will grab the highest resolution images, including images in manga and ugoira, from specified artists to specified download location. In the download location, the program will create and name directories using the artist names, then download images to the corresponding directories. It stores update information for each artist, so it will only download new uploads.
 
-The program uses threads to download images; the number of threads can be modified via command line interface.
+Note that the program can be run without logging in (you can remove the `api.login` in `main.py`), but it is not going to retrieve all of the images. The reasons for this are: (1) the R-18 content will be filtered out. (2) the AJAX response does not provide all of the illustration IDs if not logged in. Therefore, it is not recommended to do so. Also, if you want to download R-18 contents, you need to change `Viewing restriction` in your Pixiv account `User settings`.
 
 ![alt text](doc/download.gif?raw=true "download")
 
@@ -18,50 +18,53 @@ The program uses threads to download images; the number of threads can be modifi
     pip install --user requests
     ```
 
-3. edit `info.json` file in `data` folder manually or via command line interface
+3. edit `config.json` file in `data` folder manually or via command line interface
 
     - `artists`: the artist id shown in URL
 
     - `save directory`: the save directory path
 
-4. go to root directory and run the program
-
-    ```bash
-    python main.py -r
-    ```
-
-## Command line interface
+## Usage
 
 display help message
 
 ```bash
 $ python main.py -h
 
-usage: main.py [-h] [-t THREADS] [-u USERNAME] [-p PASSWORD] [-s SAVE_DIR]
-       [-a  [...]] [-d  [...]] [-r]
+usage: main.py [-h] [-l] [-u USERNAME] [-p PASSWORD] [-s SAVE_DIR]
+               [-a  [ID ...]] [-d all [ID ...]] [-c all [ID ...]] [-t THREADS]
+               [-r]
 
 optional arguments:
--h, --help   show this help message and exit
--t THREADS   change number of threads
--u USERNAME  set pixiv username
--p PASSWORD  set pixiv password
--s SAVE_DIR  set save directory path
--a  [ ...]   add artist ids
--d  [ ...]   delete artist ids
--r           run program
+  -h, --help       show this help message and exit
+  -l               list current settings
+  -u USERNAME      set pixiv username
+  -p PASSWORD      set pixiv password
+  -s SAVE_DIR      set save directory path
+  -a  [ID ...]     add artist ids
+  -d all [ID ...]  delete artist ids
+  -c all [ID ...]  clear artists update info
+  -t THREADS       set the number of threads
+  -r               run program
 ```
 
-add artist ids and run the program
+run the program with current configuration (i.e. update artists' artworks)
+
+```bash
+python main.py
+```
+
+add artist IDs then run the program
 
 ```bash
 python main.py -a 63924 408459 2188232 -r
 ```
 
-## Notes
+clear update information (i.e. re-download images), set threads to 24, then run the program
 
-- I could not figure out a way to bypass the login requirement, so you need to have an account for this program to work.
-
-- if you want to download R-18 images, you need to change `Viewing restriction` in your Pixiv `User settings`
+```bash
+python main.py -c all -t 24 -r
+```
 
 ## Challenges
 
