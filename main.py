@@ -19,19 +19,19 @@ def add_artists(config, artist_ids, api):
 
 def delete_artists(config, artist_ids, api):
     if artist_ids[0] in "allAllALL":
-        config["artists"].clear()
-        return
+        artist_ids = list(config["artists"])
     for artist_id in artist_ids:
         config["artists"].pop(artist_id, None)
         artist_name = api.artist(artist_id)["name"]
         utils.remove_dir(os.path.join(config["save_directory"], artist_name))
 
-def clear_artists(config, artist_ids):
+def clear_artists(config, artist_ids, api):
     if artist_ids[0] in "allAllALL":
-        config["artists"] = dict.fromkeys(config["artists"], None)
-        return
+        artist_ids = list(config["artists"])
     for artist_id in artist_ids:
         config["artists"][artist_id] = None
+        artist_name = api.artist(artist_id)["name"]
+        utils.remove_dir(os.path.join(config["save_directory"], artist_name))
 
 def init_stats():
     stats = {
@@ -118,7 +118,7 @@ def main():
         delete_artists(config, args.delete, api)
 
     if args.clear:
-        clear_artists(config, args.clear)
+        clear_artists(config, args.clear, api)
 
     if args.threads:
         api.threads = args.threads
