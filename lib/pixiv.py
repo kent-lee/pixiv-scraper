@@ -5,6 +5,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import os, re
+from lib import utils
 
 class PixivAPI:
 
@@ -45,16 +46,18 @@ class PixivAPI:
         res = self.request("GET", f"https://www.pixiv.net/ajax/illust/{artwork_id}")
         return res.json()["body"]
 
-    def artist_artworks(self, artist_id, start=1, stop=None):
+    def artist_artworks(self, artist_id, dir_path=None):
         res = self.request("GET", f"https://www.pixiv.net/ajax/user/{artist_id}/profile/all")
         json = res.json()["body"]
         artwork_ids = [*json["illusts"], *json["manga"]]
-        # sort ids in descending order, i.e. newest to oldest'
+        # sort ids in descending order, i.e. newest to oldest
         artwork_ids.sort(key=int, reverse=True)
-        start = artwork_ids.index(start) if isinstance(start, str) else start - 1
-        stop = artwork_ids.index(stop) if isinstance(stop, str) else stop
+        stop = None
+        if dir_path and utils.file_names(dir_path):
+            file_names = utils.file_names(dir_path, separator="_")
+            stop = utils.first_index(artwork_ids, lambda id: id in file_names)
         with ThreadPool(self.threads) as pool:
-            artworks = pool.map(self.artwork, artwork_ids[start:stop])
+            artworks = pool.map(self.artwork, artwork_ids[:stop])
         return artworks
 
     def download_url(self, count, artwork):
@@ -67,36 +70,49 @@ class PixivAPI:
             return res.json()["body"]["originalSrc"]
 
     def save_artwork(self, dir_path, artwork):
-        file_info = {
-            "artwork_id": artwork["id"],
-            "artwork_title": artwork["title"],
-            "artwork_urls": [],
+        file = {
+            "id": [artwork["id"]],
+            "title": [artwork["title"]],
+            "urls": [],
             "names": [],
             "count": artwork["pageCount"],
             "size": 0
         }
         for i in range(artwork["pageCount"]):
             url = self.download_url(i, artwork)
-            file_info["artwork_urls"].append(url)
+            file["urls"].append(url)
             headers = {"referer": f"https://www.pixiv.net/member_illust.php?mode=medium&illust_id={artwork['id']}"}
             res = self.request("GET", url, headers=headers, stream=True)
             file_name = re.search(r"\d+_(p|ugoira).*?\..*", url)[0]
-            file_info["names"].append(file_name)
+            file["names"].append(file_name)
             with open(os.path.join(dir_path, file_name), "wb") as f:
                 for chunk in res.iter_content(chunk_size=self.download_chunk_size):
                     f.write(chunk)
-                    file_info["size"] += len(chunk)
+                    file["size"] += len(chunk)
             print(f"download image: {artwork['title']} ({file_name})")
-        return file_info
+        return file
 
-    def save_artist(self, artist_id, dir_path, start=1, stop=None):
+    def save_artist(self, artist_id, dir_path):
         artist_name = self.artist(artist_id)["name"]
         print(f"download for artist {artist_name} begins\n")
-        artworks = self.artist_artworks(artist_id, start, stop)
+        dir_path = utils.make_dir(dir_path, artist_name)
+        artworks = self.artist_artworks(artist_id, dir_path)
         if not artworks:
             print(f"artist {artist_name} is up-to-date\n")
             return
         with ThreadPool(self.threads) as pool:
             files = pool.map(partial(self.save_artwork, dir_path), artworks)
         print(f"\ndownload for artist {artist_name} completed\n")
-        return files
+        combined_files = utils.counter(files)
+        utils.set_files_mtime(combined_files["names"], dir_path)
+        return combined_files
+
+    def save_artists(self, artist_ids, dir_path):
+        print(f"\nthere are {len(artist_ids)} artists\n")
+        result = []
+        for id in artist_ids:
+            files = self.save_artist(id, dir_path)
+            if not files:
+                continue
+            result.append(files)
+        return utils.counter(result)
