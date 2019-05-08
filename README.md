@@ -70,11 +70,19 @@ python main.py -c all -t 24 -r
 
 1. Pixiv uses `AJAX` script to generate content dynamically, so parsing plain `HTML` will not work
 
-    - Solution: simulate `XHR` requests made by `JavaScript` code to extract data from the server. The `XHR` requests and responses can be found in browsers' developer tools under `Network` tab. In `Chrome`, you can filter `XHR` and set the tool to `Preserve log` to have better observation
+    - Solution: simulate `XHR` requests made by `JavaScript` code to extract data from the server. The `XHR` requests and responses can be found in browsers' developer tools under `Network` tab. In `Chrome`, it has options to filter `XHR` requests and set the tool to `Preserve log` to have better observation
 
 2. sometimes the `requests` module will close the program with error `Remote end closed connection without response`. I am not sure the exact cause, but it is most likely due to the high amount of requests sent from the same IP address in a short period of time; hence the server closes the connection
 
     - Solution: use `session` to download images and allow `session.get` to retry in case of `ConnectionError` exception using `HTTPAdapter` and `Retry` packages
+
+3. update mechanism
+
+    - Attempt 1: download artworks from newest to oldest until an existing file is found on the disk. This does not work well with the multi-threading implementation, as it makes the program a lot more complicated in order to deal with thread stopping condition
+
+    - Attempt 2: record the last visited artwork information for each artist to check if update is needed. This does not work if the newest upload was deleted by the artist, as the stored information cannot be found in the parsed `AJAX` data. One solution is to record a list of all downloaded artwork information for each artist, then compare it with the parsed data, but this wastes a lot of unnecessary space and memory
+
+    - Solution: compare sorted parsed data (from newest to oldest) with the files on disk and find the index in which the first artwork exists in both lists
 
 ## Todo
 
