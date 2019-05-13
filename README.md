@@ -2,7 +2,7 @@
 
 This is my personal project created to download images from [Pixiv](https://www.pixiv.net/) website. The program will grab the highest resolution images, including images in manga and ugoira, from specified artists to specified download location. In the download location, the program will create and name directories using the artist names, then download images to the corresponding directories. It stores update information for each artist, so it will only download new uploads.
 
-Note that the program can be run without logging in (you can remove the `api.login` in `main.py`), but it is not going to retrieve all of the images. The reasons for this are: (1) the R-18 content will be filtered out. (2) the AJAX response does not provide all of the illustration IDs if not logged in. Therefore, it is not recommended to do so. Also, if you want to download R-18 contents, you need to change `Viewing restriction` in your Pixiv account `User settings`.
+Note that the program can be run without logging in, but it is not going to retrieve all of the images. The reasons for this are: (1) the R-18 content will be filtered out. (2) the AJAX response does not provide all of the illustration IDs if not logged in. Therefore, it is not recommended to do so. Also, if you want to download R-18 contents, you need to change `Viewing restriction` in your Pixiv account `User settings`.
 
 ![alt text](doc/download.gif?raw=true "download")
 
@@ -31,15 +31,16 @@ display help message
 ```bash
 $ python main.py -h
 
-usage: main.py [-h] [-l] [-u USERNAME] [-p PASSWORD] [-s SAVE_DIR]
+usage: main.py [-h] [-f FILE] [-l] [-u USERNAME] [-p PASSWORD] [-s SAVE_DIR]
                [-a  [ID ...]] [-d all [ID ...]] [-c all [ID ...]] [-t THREADS]
                [-r]
 
 optional arguments:
   -h, --help       show this help message and exit
+  -f FILE          load config file
   -l               list current settings
-  -u USERNAME      set pixiv username
-  -p PASSWORD      set pixiv password
+  -u USERNAME      set username
+  -p PASSWORD      set password
   -s SAVE_DIR      set save directory path
   -a  [ID ...]     add artist ids
   -d all [ID ...]  delete artist ids
@@ -70,7 +71,7 @@ python main.py -c all -t 24 -r
 
 1. Pixiv uses `AJAX` script to generate content dynamically, so parsing plain `HTML` will not work
 
-    - Solution: simulate `XHR` requests made by `JavaScript` code to extract data from the server. The `XHR` requests and responses can be found in browsers' developer tools under `Network` tab. In `Chrome`, it has options to filter `XHR` requests and set the tool to `Preserve log` to have better observation
+    - Solution: simulate `XHR` requests made by `JavaScript` code to extract data from the server. The `XHR` requests and responses can be found in browsers' developer tools under `Network` tab. In `Chrome`, it has options to filter `XHR` requests and `Preserve log` to have better observation
 
 2. sometimes the `requests` module will close the program with error `Remote end closed connection without response`. I am not sure the exact cause, but it is most likely due to the high amount of requests sent from the same IP address in a short period of time; hence the server closes the connection
 
