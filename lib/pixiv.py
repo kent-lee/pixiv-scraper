@@ -94,6 +94,7 @@ class PixivAPI:
 
     def save_artist(self, artist_id, dir_path):
         artist_name = self.artist(artist_id)["name"]
+        artist_name = utils.valid_filename(artist_name)
         print(f"download for artist {artist_name} begins\n")
         dir_path = utils.make_dir(dir_path, artist_name)
         artworks = self.artist_artworks(artist_id, dir_path)

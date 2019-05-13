@@ -1,5 +1,6 @@
 import collections, itertools
-import os, shutil
+import os, shutil, re
+import unicodedata
 import json
 import time
 
@@ -24,6 +25,24 @@ def file_names(*args, separator=" "):
     dir_path = os.path.join(*args)
     return {*[f.partition(separator)[0] for f in os.listdir(dir_path)]}
 
+def valid_filename(s):
+    return re.sub(r"(?u)[\\/\:\*\?\"\<\>\|]", "", s)
+
+def sorted_file_names(*args, key="mtime"):
+    dir_path = os.path.join(*args)
+    if key == "mtime":
+        key_function = lambda f: os.path.getmtime(os.path.join(dir_path, f))
+    elif key == "size":
+        key_function = lambda f: os.path.getsize(os.path.join(dir_path, f))
+    return sorted(os.listdir(dir_path), key=key_function, reverse=True)
+
+# set the access and modified times of files for sorting purpose
+def set_files_mtime(file_names, dir_path):
+    ts = time.time()
+    for i, f in enumerate(file_names):
+        file_path = os.path.join(dir_path, f)
+        os.utime(file_path, (ts - i, ts - i))
+
 def remove_dir(*args):
     dir_path = os.path.join(*args)
     shutil.rmtree(dir_path, ignore_errors=True)
@@ -47,10 +66,3 @@ def consume(iterator, n=None):
 # https://docs.python.org/3/library/itertools.html#itertools-recipes
 def flatten(listOfLists):
     return itertools.chain.from_iterable(listOfLists)
-
-# set the access and modified times of files for sorting purpose
-def set_files_mtime(file_names, dir_path):
-    ts = time.time()
-    for i, f in enumerate(file_names):
-        file_path = os.path.join(dir_path, f)
-        os.utime(file_path, (ts - i, ts - i))
