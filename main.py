@@ -37,10 +37,6 @@ def main():
     api = PixivAPI()
     config = Config(args.file)
 
-    if len(sys.argv) == 1:
-        download_artists(api, config)
-        config.update()
-        return
     if args.list:
         config.print()
     if args.username:
@@ -57,7 +53,7 @@ def main():
         config.clear_artists(args.clear)
     if args.threads:
         api.threads = args.threads
-    if args.run:
+    if len(sys.argv) == 1 or args.run:
         download_artists(api, config)
     config.update()
 

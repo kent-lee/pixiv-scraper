@@ -10,6 +10,7 @@ class Config:
         self.file_path = file_path
         self._data = utils.load_json(file_path)
         self._data["save_directory"] = os.path.normpath(self._data["save_directory"])
+        self._data["artists"] = list(dict.fromkeys(self._data["artists"]))
 
     def print(self):
         utils.print_json(self._data)
@@ -46,20 +47,16 @@ class Config:
     def artists(self):
         return self._data["artists"]
 
-    @artists.setter
-    def artists(self, artists):
-        self._data["artists"] = artists
-
     def add_artists(self, artist_ids):
-        # convert to set to eliminate duplicates and use its .add() function
-        self.artists = {*self.artists}
         for id in artist_ids:
-            try:
-                self.api.artist(id)
-                self.artists.add(id)
-            except:
-                print(f"Pixiv ID {id} does not exist")
-        self.artists = [*self.artists]
+            if id not in self.artists:
+                try:
+                    self.api.artist(id)
+                    self.artists.append(id)
+                except:
+                    print(f"Pixiv ID {id} does not exist")
+            else:
+                print(f"Pixiv ID {id} already exists in config file")
 
     def delete_artists(self, artist_ids):
         if "all" in artist_ids:
