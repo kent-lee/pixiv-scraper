@@ -27,7 +27,7 @@ def commands():
     parser.add_argument("-s", dest="save_dir", help="set save directory path")
     parser.add_argument("-a", nargs="+", dest="add", type=int, metavar=("", "ID"), help="add artist ids")
     parser.add_argument("-d", nargs="+", dest="delete", type=int, metavar=("all", "ID"), help="delete artist ids and their directories")
-    parser.add_argument("-c", nargs="+", dest="clear", type=int, metavar=("all", "ID"), help="clear artist ids' directories")
+    parser.add_argument("-c", nargs="+", dest="clear", type=int, metavar=("all", "ID"), help="clear artist directories")
     parser.add_argument("-t", dest="threads", type=int, help="set the number of threads")
     parser.add_argument("-r", action="store_true", dest="run", help="run program")
     return parser.parse_args()
