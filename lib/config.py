@@ -64,8 +64,7 @@ class Config:
         for id in artist_ids:
             if id in self.artists:
                 self.artists.remove(id)
-                artist_name = self.api.artist(id)["name"]
-                utils.remove_dir(self.save_dir, artist_name)
+                utils.remove_dir(self.save_dir, str(id))
             else:
                 print(f"Pixiv ID {id} does not exist in config file")
 
@@ -74,7 +73,6 @@ class Config:
             artist_ids = self.artists.copy()
         for id in artist_ids:
             if id in self.artists:
-                artist_name = self.api.artist(id)["name"]
-                utils.remove_dir(self.save_dir, artist_name)
+                utils.remove_dir(self.save_dir, str(id))
             else:
                 print(f"Pixiv ID {id} does not exist in config file")
