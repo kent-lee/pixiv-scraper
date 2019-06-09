@@ -90,7 +90,11 @@ python main.py -c all -t 24 -r
 
     - Attempt 2: record the last visited artwork information for each artist to check if update is needed. This does not work if the newest upload was deleted by the artist, as the stored information cannot be found in the retrieved HTML. One solution is to record a list of all downloaded artwork information for each artist, then compare it with the parsed data, but this wastes a lot of unnecessary space and memory
 
-    - Solution: find the file names while parsing the artwork IDs such that the former can be used to compare with the existing files on disk. If there is a match, then the function will return a list of artworks from newest to the point in which the match was found.
+    - Solution: find the file names while parsing the artwork IDs such that the former can be used to compare with the existing files on disk. If there is a match, then the function will return a list of artworks from newest to the point in which the match was found
+
+4. folder name inconsistency. I originally planned to use artist names as the subdirectory names, but there are two problems with this approach: (1) some names are invalid (e.g. containing special characters), and (2), if the artists change their names on Pixiv, the program will re-download all contents of the artists and leave two directories pointing to the same artists
+
+    - Solution: name subdirectories with the artist IDs
 
 ## Todo
 
