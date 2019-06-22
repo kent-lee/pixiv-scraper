@@ -25,17 +25,6 @@ def file_names(*args, separator=" "):
     dir_path = os.path.join(*args)
     return {*[f.partition(separator)[0] for f in os.listdir(dir_path)]}
 
-def valid_filename(s):
-    return re.sub(r"(?u)[\\/\:\*\?\"\<\>\|]", "", s)
-
-def sorted_file_names(*args, key="mtime"):
-    dir_path = os.path.join(*args)
-    if key == "mtime":
-        key_function = lambda f: os.path.getmtime(os.path.join(dir_path, f))
-    elif key == "size":
-        key_function = lambda f: os.path.getsize(os.path.join(dir_path, f))
-    return sorted(os.listdir(dir_path), key=key_function, reverse=True)
-
 # set the access and modified times of files for sorting purpose
 def set_files_mtime(file_names, dir_path):
     ts = time.time()
@@ -50,10 +39,18 @@ def remove_dir(*args):
 def first_index(iterable, predicate, default=None):
     return next((i for i, v in enumerate(iterable) if predicate(v)), default)
 
-def counter(listOfDicts):
+def dict_counter(listOfDicts):
     counter = collections.Counter()
     for d in reversed(listOfDicts):
         counter.update(d)
+    return counter
+
+def list_counter(iterable, option="count"):
+    counter = collections.Counter(iterable)
+    if option == "sum":
+        return sum(counter.values())
+    elif option == "percent":
+        return {i: round(counter[i] / len(iterable) * 100.0, 2) for i in counter}
     return counter
 
 # https://docs.python.org/3/library/itertools.html#itertools-recipes

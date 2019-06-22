@@ -4,13 +4,15 @@ from functools import partial
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-import os, re
+import os, re, sys
 from lib import utils
 
 class PixivAPI:
 
     threads = multiprocessing.cpu_count() * 3
-    download_chunk_size = 1048576
+    chunk_size = 1048576
+    options = ["artworks", "bookmarks"]
+    sys.tracebacklimit = 0
 
     def __init__(self):
         self.session = requests.Session()
@@ -24,7 +26,10 @@ class PixivAPI:
             res = self.session.get(url, **kwargs)
         elif method == "POST":
             res = self.session.post(url, **kwargs)
-        res.raise_for_status()
+        if res.status_code == 404:
+            raise Exception(f"404 Not Found for URL: {url}")
+        elif res.status_code == 401:
+            raise Exception(f"401 Unauthorized for function: {sys._getframe(1).f_code.co_name}(). Please call login() first")
         return res
 
     def login(self, username, password):
@@ -38,16 +43,16 @@ class PixivAPI:
         }
         self.request("POST", url, data=data)
 
-    def artist(self, artist_id):
-        res = self.request("GET", f"https://www.pixiv.net/ajax/user/{artist_id}")
+    def user(self, user_id):
+        res = self.request("GET", f"https://www.pixiv.net/ajax/user/{user_id}")
         return res.json()["body"]
-    
+
     def artwork(self, artwork_id):
         res = self.request("GET", f"https://www.pixiv.net/ajax/illust/{artwork_id}")
         return res.json()["body"]
 
-    def artist_artworks(self, artist_id, dir_path=None):
-        res = self.request("GET", f"https://www.pixiv.net/ajax/user/{artist_id}/profile/all")
+    def user_artworks(self, user_id, dir_path=None):
+        res = self.request("GET", f"https://www.pixiv.net/ajax/user/{user_id}/profile/all")
         json = res.json()["body"]
         artwork_ids = [*json["illusts"], *json["manga"]]
         # sort ids in descending order, i.e. newest to oldest
@@ -59,6 +64,32 @@ class PixivAPI:
         with ThreadPool(self.threads) as pool:
             artworks = pool.map(self.artwork, artwork_ids[:stop])
         return artworks
+
+    def user_bookmarks(self, user_id, dir_path=None):
+        limit = 1000
+        url = "https://www.pixiv.net/ajax/user/{}/illusts/bookmarks?tag=&offset=0&limit={}&rest=show"
+        json = self.request("GET", url.format(user_id, limit)).json()["body"]
+        if json["total"] > limit:
+            json = self.request("GET", url.format(user_id, json["total"])).json()["body"]
+        artwork_ids = [a["id"] for a in json["works"]]
+        stop = None
+        if dir_path and utils.file_names(dir_path):
+            file_names = utils.file_names(dir_path, separator="_")
+            stop = utils.first_index(artwork_ids, lambda id: id in file_names)
+        with ThreadPool(self.threads) as pool:
+            artworks = pool.map(self.artwork, artwork_ids[:stop])
+        return artworks
+
+    def recommend(self, user_id):
+        limit = 1000
+        url = "https://www.pixiv.net/ajax/user/{}/illusts/bookmarks?tag=&offset=0&limit={}&rest=show"
+        json = self.request("GET", url.format(user_id, limit)).json()["body"]
+        if json["total"] > limit:
+            json = self.request("GET", url.format(user_id, json["total"])).json()["body"]
+        user_ids = [a["userId"] for a in json["works"]]
+        counter = utils.list_counter(user_ids, "percent")
+        counter = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+        return {k: str(v) + "%" for k, v in counter}
 
     def download_url(self, count, artwork):
         # illustType: 0 = normal image, 1 = manga, 2 = ugoira
@@ -86,34 +117,52 @@ class PixivAPI:
             file_name = re.search(r"\d+_(p|ugoira).*?\..*", url)[0]
             file["names"].append(file_name)
             with open(os.path.join(dir_path, file_name), "wb") as f:
-                for chunk in res.iter_content(chunk_size=self.download_chunk_size):
+                for chunk in res.iter_content(chunk_size=self.chunk_size):
                     f.write(chunk)
                     file["size"] += len(chunk)
             print(f"download image: {artwork['title']} ({file_name})")
         return file
 
-    def save_artist(self, artist_id, dir_path):
-        artist_name = self.artist(artist_id)["name"]
-        artist_name = utils.valid_filename(artist_name)
-        print(f"download for artist {artist_name} begins\n")
-        dir_path = utils.make_dir(dir_path, str(artist_id))
-        artworks = self.artist_artworks(artist_id, dir_path)
+    def save_artworks(self, user_id, dir_path):
+        username = self.user(user_id)["name"]
+        print(f"download artworks for user {username}\n")
+        dir_path = utils.make_dir(dir_path, str(user_id))
+        artworks = self.user_artworks(user_id, dir_path)
         if not artworks:
-            print(f"artist {artist_name} is up-to-date\n")
+            print(f"user {username} is up-to-date\n")
             return
         with ThreadPool(self.threads) as pool:
             files = pool.map(partial(self.save_artwork, dir_path), artworks)
-        print(f"\ndownload for artist {artist_name} completed\n")
-        combined_files = utils.counter(files)
+        print(f"\ndownload for user {username} completed\n")
+        combined_files = utils.dict_counter(files)
         utils.set_files_mtime(combined_files["names"], dir_path)
         return combined_files
 
-    def save_artists(self, artist_ids, dir_path):
-        print(f"\nthere are {len(artist_ids)} artists\n")
+    def save_bookmarks(self, user_id, dir_path):
+        username = self.user(user_id)["name"]
+        print(f"download bookmarks for user {username}\n")
+        dir_path = utils.make_dir(dir_path, str(user_id) + " bookmarks")
+        artworks = self.user_bookmarks(user_id, dir_path)
+        if not artworks:
+            print(f"user {username} is up-to-date\n")
+            return
+        with ThreadPool(self.threads) as pool:
+            files = pool.map(partial(self.save_artwork, dir_path), artworks)
+        print(f"\ndownload for user {username} completed\n")
+        combined_files = utils.dict_counter(files)
+        utils.set_files_mtime(combined_files["names"], dir_path)
+        return combined_files
+
+    def save_users(self, user_ids, dir_path, option):
+        print(f"\nthere are {len(user_ids)} users\n")
         result = []
-        for id in artist_ids:
-            files = self.save_artist(id, dir_path)
+        if option == "artworks":
+            function = self.save_artworks
+        elif option == "bookmarks":
+            function = self.save_bookmarks
+        for id in user_ids:
+            files = function(id, dir_path)
             if not files:
                 continue
             result.append(files)
-        return utils.counter(result)
+        return utils.dict_counter(result)

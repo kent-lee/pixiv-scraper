@@ -10,7 +10,7 @@ class Config:
         self.file_path = file_path
         self._data = utils.load_json(file_path)
         self._data["save_directory"] = os.path.normpath(self._data["save_directory"])
-        self._data["artists"] = list(dict.fromkeys(self._data["artists"]))
+        self._data["users"] = list(dict.fromkeys(self._data["users"]))
 
     def print(self):
         utils.print_json(self._data)
@@ -44,35 +44,39 @@ class Config:
         self._data["save_directory"] = save_dir
 
     @property
-    def artists(self):
-        return self._data["artists"]
+    def users(self):
+        return self._data["users"]
 
-    def add_artists(self, artist_ids):
-        for id in artist_ids:
-            if id not in self.artists:
+    def add_users(self, user_ids):
+        for id in user_ids:
+            if id not in self.users:
                 try:
-                    self.api.artist(id)
-                    self.artists.append(id)
+                    self.api.user(id)
+                    self.users.append(id)
                 except:
                     print(f"Pixiv ID {id} does not exist")
             else:
                 print(f"Pixiv ID {id} already exists in config file")
 
-    def delete_artists(self, artist_ids):
-        if "all" in artist_ids:
-            artist_ids = self.artists.copy()
-        for id in artist_ids:
-            if id in self.artists:
-                self.artists.remove(id)
+    def delete_users(self, user_ids):
+        if "all" in user_ids:
+            user_ids = self.users.copy()
+        user_ids = [int(id) for id in user_ids]
+        for id in user_ids:
+            if id in self.users:
+                self.users.remove(id)
                 utils.remove_dir(self.save_dir, str(id))
+                utils.remove_dir(self.save_dir, str(id) + " bookmarks")
             else:
                 print(f"Pixiv ID {id} does not exist in config file")
 
-    def clear_artists(self, artist_ids):
-        if "all" in artist_ids:
-            artist_ids = self.artists.copy()
-        for id in artist_ids:
-            if id in self.artists:
+    def clear_users(self, user_ids):
+        if "all" in user_ids:
+            user_ids = self.users.copy()
+        user_ids = [int(id) for id in user_ids]
+        for id in user_ids:
+            if id in self.users:
                 utils.remove_dir(self.save_dir, str(id))
+                utils.remove_dir(self.save_dir, str(id) + " bookmarks")
             else:
                 print(f"Pixiv ID {id} does not exist in config file")
