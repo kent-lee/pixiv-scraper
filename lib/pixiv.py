@@ -11,8 +11,6 @@ class PixivAPI:
 
     threads = multiprocessing.cpu_count() * 3
     chunk_size = 1048576
-    options = ["artworks", "bookmarks"]
-    sys.tracebacklimit = 0
 
     def __init__(self):
         self.session = requests.Session()
@@ -26,10 +24,7 @@ class PixivAPI:
             res = self.session.get(url, **kwargs)
         elif method == "POST":
             res = self.session.post(url, **kwargs)
-        if res.status_code == 404:
-            raise Exception(f"404 Not Found for URL: {url}")
-        elif res.status_code == 401:
-            raise Exception(f"401 Unauthorized for function: {sys._getframe(1).f_code.co_name}(). Please call login() first")
+        res.raise_for_status()
         return res
 
     def login(self, username, password):
@@ -51,45 +46,64 @@ class PixivAPI:
         res = self.request("GET", f"https://www.pixiv.net/ajax/illust/{artwork_id}")
         return res.json()["body"]
 
+    def bookmarks(self, user_id):
+        limit = 10000
+        url = "https://www.pixiv.net/ajax/user/{}/illusts/bookmarks?tag=&offset=0&limit={}&rest=show"
+        json = self.request("GET", url.format(user_id, limit)).json()["body"]
+        if json["total"] > limit:
+            json = self.request("GET", url.format(user_id, json["total"])).json()["body"]
+        return json["works"]
+
+    def rankings(self, mode, content, date, limit=None):
+        """
+        R18 contents require login()
+
+        available modes for content "all": [daily, weekly, monthly, rookie, original, male, female, daily_r18, weekly_r18, male_r18, female_r18]
+        available modes for content "illust": [daily, weekly, monthly, rookie, daily_r18, weekly_r18]
+        available modes for content "ugoira": [daily, weekly, daily_r18, weekly_r18, male_r18, female_r18]
+        available modes for content "manga": [daily, weekly, monthly, rookie, daily_r18, weekly_r18, male_r18, female_r18]
+        """
+        url = "https://www.pixiv.net/ranking.php?mode={}&content={}&date={}&p={}&format=json"
+        json = self.request("GET", url.format(mode, content, date, 1)).json()
+        items = json["contents"]
+        limit = json["rank_total"] if limit is None else int(limit)
+        for i in range(2, -(-limit // 50) + 1):
+            json = self.request("GET", url.format(mode, content, date, i)).json()
+            items.extend(json["contents"])
+        return items[:limit]
+
     def user_artworks(self, user_id, dir_path=None):
         res = self.request("GET", f"https://www.pixiv.net/ajax/user/{user_id}/profile/all")
         json = res.json()["body"]
         artwork_ids = [*json["illusts"], *json["manga"]]
         # sort ids in descending order, i.e. newest to oldest
         artwork_ids.sort(key=int, reverse=True)
-        stop = None
+        limit = None
         if dir_path and utils.file_names(dir_path):
             file_names = utils.file_names(dir_path, separator="_")
-            stop = utils.first_index(artwork_ids, lambda id: id in file_names)
+            limit = utils.first_index(artwork_ids, lambda id: id in file_names)
         with ThreadPool(self.threads) as pool:
-            artworks = pool.map(self.artwork, artwork_ids[:stop])
+            artworks = pool.map(self.artwork, artwork_ids[:limit])
         return artworks
 
-    def user_bookmarks(self, user_id, dir_path=None):
-        limit = 1000
-        url = "https://www.pixiv.net/ajax/user/{}/illusts/bookmarks?tag=&offset=0&limit={}&rest=show"
-        json = self.request("GET", url.format(user_id, limit)).json()["body"]
-        if json["total"] > limit:
-            json = self.request("GET", url.format(user_id, json["total"])).json()["body"]
-        artwork_ids = [a["id"] for a in json["works"]]
-        stop = None
+    def user_bookmarks_artworks(self, user_id, dir_path=None):
+        artwork_ids = [a["id"] for a in self.bookmarks(user_id)]
+        limit = None
         if dir_path and utils.file_names(dir_path):
             file_names = utils.file_names(dir_path, separator="_")
-            stop = utils.first_index(artwork_ids, lambda id: id in file_names)
+            limit = utils.first_index(artwork_ids, lambda id: id in file_names)
         with ThreadPool(self.threads) as pool:
-            artworks = pool.map(self.artwork, artwork_ids[:stop])
+            artworks = pool.map(self.artwork, artwork_ids[:limit])
         return artworks
 
-    def recommend(self, user_id):
-        limit = 1000
-        url = "https://www.pixiv.net/ajax/user/{}/illusts/bookmarks?tag=&offset=0&limit={}&rest=show"
-        json = self.request("GET", url.format(user_id, limit)).json()["body"]
-        if json["total"] > limit:
-            json = self.request("GET", url.format(user_id, json["total"])).json()["body"]
-        user_ids = [a["userId"] for a in json["works"]]
-        counter = utils.list_counter(user_ids, "percent")
-        counter = sorted(counter.items(), key=lambda x: x[1], reverse=True)
-        return {k: str(v) + "%" for k, v in counter}
+    def rankings_artworks(self, mode, content, date, limit, dir_path=None):
+        artwork_ids = [str(a["illust_id"]) for a in self.rankings(mode, content, date, limit)]
+        if dir_path and utils.file_names(dir_path):
+            file_names = utils.file_names(dir_path, separator="_")
+            artwork_ids = [a for a in artwork_ids if a not in file_names]
+        with ThreadPool(self.threads) as pool:
+            artworks = pool.map(self.artwork, artwork_ids)
+        return artworks
 
     def download_url(self, count, artwork):
         # illustType: 0 = normal image, 1 = manga, 2 = ugoira
@@ -142,7 +156,7 @@ class PixivAPI:
         username = self.user(user_id)["name"]
         print(f"download bookmarks for user {username}\n")
         dir_path = utils.make_dir(dir_path, str(user_id) + " bookmarks")
-        artworks = self.user_bookmarks(user_id, dir_path)
+        artworks = self.user_bookmarks_artworks(user_id, dir_path)
         if not artworks:
             print(f"user {username} is up-to-date\n")
             return
@@ -153,16 +167,44 @@ class PixivAPI:
         utils.set_files_mtime(combined_files["names"], dir_path)
         return combined_files
 
-    def save_users(self, user_ids, dir_path, option):
+    def save_rankings(self, mode, content, date, limit, dir_path):
+        print(f"download {mode} {content} rankings\n")
+        dir_path = utils.make_dir(dir_path, f"{mode} {content} rankings")
+        artworks = self.rankings_artworks(mode, content, date, limit, dir_path)
+        if not artworks:
+            print(f"{mode} {content} rankings are up-to-date\n")
+            return
+        with ThreadPool(self.threads) as pool:
+            files = pool.map(partial(self.save_artwork, dir_path), artworks)
+        print(f"\ndownload for {mode} {content} rankings completed\n")
+        combined_files = utils.dict_counter(files)
+        utils.set_files_mtime(combined_files["names"], dir_path)
+        return combined_files
+
+    def save_users_artworks(self, user_ids, dir_path):
         print(f"\nthere are {len(user_ids)} users\n")
         result = []
-        if option == "artworks":
-            function = self.save_artworks
-        elif option == "bookmarks":
-            function = self.save_bookmarks
-        for id in user_ids:
-            files = function(id, dir_path)
+        for user in user_ids:
+            files = self.save_artworks(user, dir_path)
             if not files:
                 continue
             result.append(files)
         return utils.dict_counter(result)
+
+    def save_users_bookmarks(self, user_ids, dir_path):
+        print(f"\nthere are {len(user_ids)} users\n")
+        result = []
+        for user in user_ids:
+            files = self.save_bookmarks(user, dir_path)
+            if not files:
+                continue
+            result.append(files)
+        return utils.dict_counter(result)
+
+    # TODO - incomplete, see issue for potential implementation
+    def recommend(self, user_ids):
+        import collections
+        counter = collections.Counter()
+        for id in user_ids:
+            counter += collections.Counter([a["userId"] for a in self.bookmarks(id)])
+        return counter.most_common()
