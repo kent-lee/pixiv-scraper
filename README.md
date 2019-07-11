@@ -1,21 +1,21 @@
 # Pixiv Scraper
 
-This is my personal project created to download images from [Pixiv](https://www.pixiv.net/) website. The program will grab the original resolution images, including images in manga and ugoira, from specified users to specified download directory. In the download directory, the program will create and name subdirectories using the user IDs, then save artworks to the corresponding subdirectories. For each artwork, the file modification time are set in order from newest to oldest so that the files can be sorted by modified date. Lastly, when running this program, it will check each user directory to see if an update is needed such that only new uploads will be downloaded.
-
-Note that if you want to download R-18 contents, you need to change `Viewing restriction` in your Pixiv account `User settings`. Also note that the function `user_artworks()` does not require login, but will not retrieve all of the images. The reasons for this are: (1) the R-18 content will be filtered out. (2) the AJAX response does not provide all of the illustration IDs if not logged in. Therefore, it is recommended to register an account.
+This is my personal project created to download images from [Pixiv](https://www.pixiv.net/) website. The program will grab the original resolution images, including images in manga and ugoira, from specified users to specified download directory.
 
 ![alt text](doc/download.gif?raw=true "download")
 
 ![alt text](doc/result.png?raw=true "result")
 
-## Features
+## Overview
 
-- simple Pixiv API
-- multi-threaded
-- downloads all artworks (illustrations + manga) and bookmarks of given user IDs
-- updates all artworks (illustrations + manga) and bookmarks of given user IDs
-- categorizes downloaded contents in subdirectories
-- sets downloaded file modification in order from newest to oldest such that they can be sorted by modified date
+- when running program, only new uploads will be downloaded
+- downloaded artworks are categorized by authors
+- modification time of each artwork is set according to upload order
+
+## Note
+
+- if you want to download R-18 contents, you need to change `Viewing restriction` in your Pixiv account `User settings`
+- only tested on Windows 10, Ubuntu 18.04, and Manjaro 18.0.4
 
 ## Instructions
 
@@ -36,65 +36,97 @@ Note that if you want to download R-18 contents, you need to change `Viewing res
 
 display help message
 
-```
+```bash
 $ python main.py -h
 
 usage: main.py [-h] [-f FILE] [-l] [-u USERNAME] [-p PASSWORD] [-s SAVE_DIR]
-               [-a  [ID ...]] [-d all [ID ...]] [-c all [ID ...]] [-t THREADS]
-               [-r]
-               [{artworks,bookmarks}]
+               [-t THREADS]
+               {artwork,bookmark,ranking} ...
 
 positional arguments:
-  {artworks,bookmarks}  set download/config option (default: artworks)
+  {artwork,bookmark,ranking}
+    artwork             download artworks from user IDs specified in "users"
+                        field
+    bookmark            download bookmark artworks from user IDs specified in
+                        "bookmarks" field
+    ranking             download top N ranking artworks based on given
+                        conditions
 
 optional arguments:
   -h, --help            show this help message and exit
-  -f FILE               load file for this instance (default: data\test.json)
+  -f FILE               load file for this instance (default:
+                        data/config.json)
   -l                    list current settings
   -u USERNAME           set username
   -p PASSWORD           set password
   -s SAVE_DIR           set save directory path
-  -a  [ID ...]          add user IDs
-  -d all [ID ...]       delete user IDs and their directories
-  -c all [ID ...]       clear directories of user IDs
   -t THREADS            set number of threads for this instance
-  -r                    download content from user IDs (content: OPTION)
 ```
 
-download artworks for user IDs stored in config file; update users' artworks if directories already exist
+display `artwork` help message
 
 ```bash
-python main.py
+$ python main.py artwork -h
+
+usage: main.py artwork [-h] [-a  [ID ...]] [-d all [ID ...]] [-c all [ID ...]]
+
+optional arguments:
+  -h, --help       show this help message and exit
+  -a  [ID ...]     add user IDs
+  -d all [ID ...]  delete user IDs and their directories
+  -c all [ID ...]  clear directories of user IDs
 ```
 
-download bookmarks for user IDs stored in config file; update users' artworks if directories already exist
+display `ranking` help message
 
 ```bash
-python main.py bookmarks
+$ python main.py ranking -h
+
+usage: main.py ranking [-h] -m MODE -c CONTENT -d YYYYMMDD [-n N]
+
+optional arguments:
+  -h, --help   show this help message and exit
+  -m MODE      modes: {daily, weekly, monthly, rookie, original, male, female,
+               daily_r18, weekly_r18, male_r18, female_r18}
+  -c CONTENT   contents: {all, illust, ugoira, manga}
+  -d YYYYMMDD  date
+  -n N         get top N artworks (default: 20)
 ```
 
-delete user IDs and their directories (both artworks and bookmarks), then download artworks for remaining IDs in config file
+download artworks from user IDs stored in config file; update users' artworks if directories already exist
 
 ```bash
-python main.py -d 63924 408459 -r
+python main.py artwork
 ```
 
-add user IDs then download bookmarks for newly added IDs + IDs in config file
+download bookmark artworks from user IDs stored in config file; update users' artworks if directories already exist
 
 ```bash
-python main.py bookmarks -a 63924 408459 2188232 -r
+python main.py bookmark
 ```
 
-load `temp.json` file in `data` folder (only for this instance), add user IDs to that file, then download artworks for IDs in that file
+delete user IDs and their directories (IDs in `users` field + artwork directories), then download artworks for remaining IDs in config file
 
 ```bash
-python main.py -f data/temp.json -a 63924 408459 2188232 -r
+python main.py artwork -d 63924 408459
+```
+
+add user IDs (IDs in `bookmarks` field) then download bookmark artworks for newly added IDs + IDs in config file
+
+```bash
+python main.py bookmark -a 63924 408459 2188232
+```
+
+load `temp.json` file in `data` folder (only for this instance), add user IDs to that file, then download artworks from IDs in that file
+
+```bash
+python main.py artwork -f data/temp.json -a 63924 408459 2188232
 ```
 
 clear directories for all user IDs in config file, set threads to 24, then download artworks (i.e. re-download artworks)
 
 ```bash
-python main.py -c all -t 24 -r
+python main.py artwork -c all -t 24
 ```
 
 ## Challenges
@@ -119,6 +151,10 @@ python main.py -c all -t 24 -r
 
     - Solution: use user IDs to name subdirectories
 
+5. login verification. The program runs fine most of the time, but I have encountered a few times where the program failed to run due to authentication error. This is caused by the `reCAPTCHA v3` verification, and I have yet to figure out a way to bypass it
+
+    - Temporary Solution: if you get this error, just wait for a period of time (e.g. a few days), and the program would work again
+
 ## Todo
 
-- add more functionality (e.g. ranking)
+- implement recommendation system

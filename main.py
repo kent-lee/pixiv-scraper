@@ -53,10 +53,6 @@ def main():
             config.clear_bookmarks(args.c)
         download_users(api, config, args.option)
     elif args.option == "ranking":
-        # if args.d:
-        #     config.delete_rankings(args.d)
-        # if args.c:
-        #     config.clear_rankings(args.c)
         params = {
             "mode": args.m,
             "content": args.c,

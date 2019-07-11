@@ -115,22 +115,3 @@ class Config:
                 utils.remove_dir(self.save_dir, str(id) + " bookmarks")
             else:
                 print(f"Pixiv ID {id} does not exist in config file")
-
-    # def delete_rankings(self, **kwargs):
-    #     file_path = 
-    #     for id in user_ids:
-    #         if id in self.bookmarks:
-    #             self.bookmarks.remove(id)
-    #             utils.remove_dir(self.save_dir, str(id) + " bookmarks")
-    #         else:
-    #             print(f"Pixiv ID {id} does not exist in config file")
-
-    # def clear_rankings(self, user_ids):
-    #     if "all" in user_ids:
-    #         user_ids = self.bookmarks.copy()
-    #     user_ids = [int(id) for id in user_ids]
-    #     for id in user_ids:
-    #         if id in self.bookmarks:
-    #             utils.remove_dir(self.save_dir, str(id) + " bookmarks")
-    #         else:
-    #             print(f"Pixiv ID {id} does not exist in config file")
